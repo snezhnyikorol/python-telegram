@@ -36,6 +36,7 @@ MESSAGE_HANDLER_TYPE: str = 'updateNewMessage'
 
 class AuthorizationState(enum.Enum):
     NONE = None
+    WAIT_REGISTRATION = 'authorizationStateWaitRegistration'
     WAIT_CODE = 'authorizationStateWaitCode'
     WAIT_PASSWORD = 'authorizationStateWaitPassword'
     WAIT_TDLIB_PARAMETERS = 'authorizationStateWaitTdlibParameters'
@@ -553,6 +554,7 @@ class Telegram:
             AuthorizationState.WAIT_ENCRYPTION_KEY: self._send_encryption_key,
             AuthorizationState.WAIT_PHONE_NUMBER: self._send_phone_number_or_bot_token,
             AuthorizationState.WAIT_CODE: self._send_telegram_code,
+            AuthorizationState.WAIT_REGISTRATION: self._register_user,
             AuthorizationState.WAIT_PASSWORD: self._send_password,
         }
 
@@ -707,6 +709,22 @@ class Telegram:
 
         """
         result = self._send_password(password)
+        self.authorization_state = self._wait_authorization_result(result)
+
+        return self.authorization_state
+
+    def _register_user(self, first_name: Optional[str] = None, last_name: Optional[str] = None) -> AsyncResult:
+        logger.info('Registering user')
+        if first_name is None:
+            first_name = input('Enter first name:')
+        if last_name is None:
+            last_name = input('Enter last name:')
+        data = {'@type': 'registerUser', 'first_name': first_name, 'last_name': last_name}
+
+        return self._send_data(data, result_id='updateAuthorizationState')
+
+    def register_user(self, first_name: str, last_name: str) -> AuthorizationState:
+        result = self._register_user(first_name, last_name)
         self.authorization_state = self._wait_authorization_result(result)
 
         return self.authorization_state
